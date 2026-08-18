@@ -4,7 +4,7 @@ Milestones are ordered so the project is demoable (fixture manifests →
 findings → CI gate) from M2 onward. Each milestone lands with its tests and
 green CI. See SPEC.md for the full design.
 
-- [ ] **M1 — Manifest loader & workload model.** Multi-doc YAML decode
+- [x] **M1 — Manifest loader & workload model.** Multi-doc YAML decode
       (files/dirs/stdin), typed kinds + `Unstructured` passthrough,
       `Snapshot` with (kind, ns, name) index and selector matching, common
       `PodSpec()` accessor, `parse-error` findings with file/line, seeded

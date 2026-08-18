@@ -1,0 +1,16 @@
+# Fixture: one valid document surrounded by two malformed ones — the
+# loader must audit the good document and emit parse-error findings for
+# the rest (SPEC §3).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ok
+  namespace: shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+	name: tabs-are-invalid-in-yaml
+---
+metadata:
+  name: no-kind-or-apiversion
