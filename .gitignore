@@ -1,0 +1,6 @@
+/seaworthy
+*.test
+*.out
+dist/
+report.html
+results.sarif

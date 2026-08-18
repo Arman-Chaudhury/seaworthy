@@ -1,0 +1,163 @@
+# Seeded fixture: a small "shop" app with deliberate hygiene defects.
+# Rule tests and the kind e2e (BUILD_PLAN M7) assert against this file.
+# Expected findings are listed per document.
+---
+# web: latest-image, missing-probes, no-resource-requests, secrets-in-env,
+#      no-pdb (3 replicas, no PDB in the set), hpa-replicas-conflict
+#      (pins replicas while shop-web-hpa targets it), missing-labels
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-web
+  namespace: shop
+  labels:
+    app: shop-web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: shop-web
+  template:
+    metadata:
+      labels:
+        app: shop-web
+    spec:
+      containers:
+        - name: web
+          image: nginx:latest
+          env:
+            - name: DB_PASSWORD
+              value: hunter2
+            - name: DB_HOST
+              value: postgres.shop.svc
+---
+# worker: single-replica, runs-as-root (explicit uid 0), host-access
+#         (hostPath volume), latest-image (untagged)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-worker
+  namespace: shop
+  labels:
+    app: shop-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-worker
+  template:
+    metadata:
+      labels:
+        app: shop-worker
+    spec:
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: worker
+          image: shop/worker
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          livenessProbe:
+            exec: {command: [pgrep, worker]}
+      volumes:
+        - name: spool
+          hostPath: {path: /var/spool/shop}
+---
+# api service: dangling-service — selector matches no workload in the set
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-api
+  namespace: shop
+spec:
+  selector:
+    app: shop-api
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# hpa for web: triggers hpa-replicas-conflict on shop-web (above)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop-web-hpa
+  namespace: shop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shop-web
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+---
+# hpa for a deployment that does not exist: hpa-target-missing
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop-search-hpa
+  namespace: shop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shop-search
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+---
+# clean deployment: the negative case — should produce NO findings
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-catalog
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: shop-catalog
+    app.kubernetes.io/part-of: shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shop-catalog
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shop-catalog
+        app.kubernetes.io/part-of: shop
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: catalog
+          image: shop/catalog:1.4.2
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8080}
+---
+# pdb covering catalog, so no-pdb fires only for shop-web
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shop-catalog-pdb
+  namespace: shop
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shop-catalog
