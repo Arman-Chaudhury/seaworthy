@@ -9,7 +9,7 @@ green CI. See SPEC.md for the full design.
       `Snapshot` with (kind, ns, name) index and selector matching, common
       `PodSpec()` accessor, `parse-error` findings with file/line, seeded
       fixture set under `testdata/fixtures/`.
-- [ ] **M2 — Rules engine core.** `Finding`/`Severity` model, rule registry,
+- [x] **M2 — Rules engine core.** `Finding`/`Severity` model, rule registry,
       `audit` command with `--rule` filtering and deterministic ordering;
       first rules: `latest-image`, `no-resource-requests`; JSON run document
       (schema v1); exit-code contract (0/1/2) with `--fail-on`.
