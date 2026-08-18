@@ -13,7 +13,7 @@ green CI. See SPEC.md for the full design.
       `audit` command with `--rule` filtering and deterministic ordering;
       first rules: `latest-image`, `no-resource-requests`; JSON run document
       (schema v1); exit-code contract (0/1/2) with `--fail-on`.
-- [ ] **M3 — Full pod-level rule pack.** `missing-probes`, `runs-as-root`,
+- [x] **M3 — Full pod-level rule pack.** `missing-probes`, `runs-as-root`,
       `privilege-escalation`, `host-access`, `secrets-in-env`,
       `missing-labels`, `deprecated-api` — fixture-backed
       positive/negative/edge tests per rule (SPEC §4).

@@ -100,6 +100,13 @@ func Run(ctx *Context, opts Options) ([]audit.Finding, error) {
 func All() []Rule {
 	return []Rule{
 		latestImage,
+		missingProbes,
 		noResourceRequests,
+		runsAsRoot,
+		privilegeEscalation,
+		hostAccess,
+		secretsInEnv,
+		missingLabels,
+		deprecatedAPI,
 	}
 }
