@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "seaworthy",
+          "version": "test",
+          "informationUri": "https://github.com/Arman-Chaudhury/seaworthy",
+          "rules": [
+            {
+              "id": "latest-image",
+              "shortDescription": {
+                "text": "image not pinned"
+              },
+              "help": {
+                "text": "pin it"
+              }
+            },
+            {
+              "id": "no-pdb",
+              "shortDescription": {
+                "text": "no PDB"
+              },
+              "help": {
+                "text": "add one"
+              }
+            },
+            {
+              "id": "missing-labels",
+              "shortDescription": {
+                "text": "labels missing"
+              },
+              "help": {
+                "text": "add them"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "missing-labels",
+          "level": "note",
+          "message": {
+            "text": "shop/Deployment/api: missing label(s) app.kubernetes.io/name"
+          },
+          "partialFingerprints": {
+            "seaworthy/v1": "e03c59f0f444"
+          }
+        },
+        {
+          "ruleId": "latest-image",
+          "level": "error",
+          "message": {
+            "text": "shop/Deployment/web: container \"web\": image \"nginx:latest\" is not pinned"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "deploy/web.yaml"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "seaworthy/v1": "3b5fbcc83ee5"
+          }
+        },
+        {
+          "ruleId": "no-pdb",
+          "level": "warning",
+          "message": {
+            "text": "shop/Deployment/web: 3 replicas but no PodDisruptionBudget matches its pods"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "deploy/web.yaml"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "seaworthy/v1": "3d5976a66851"
+          }
+        }
+      ]
+    }
+  ]
+}

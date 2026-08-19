@@ -104,13 +104,7 @@ func WriteTable(w io.Writer, findings []audit.Finding, sum Summary, delta *Delta
 	}
 	lastGroup := ""
 	for _, f := range findings {
-		ref := f.Name
-		if f.Kind != "" {
-			ref = f.Kind + "/" + f.Name
-		}
-		if f.Namespace != "" {
-			ref = f.Namespace + "/" + ref
-		}
+		ref := f.Ref()
 		loc := ""
 		if f.File != "" {
 			loc = fmt.Sprintf("  (%s:%d)", f.File, f.Line)

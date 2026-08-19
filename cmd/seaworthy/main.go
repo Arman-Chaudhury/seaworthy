@@ -69,7 +69,7 @@ func (s *stringList) Set(v string) error { *s = append(*s, v); return nil }
 func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("audit", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	format := fs.String("format", "table", "output format: table|json")
+	format := fs.String("format", "table", "output format: table|json|sarif|html")
 	failOn := fs.String("fail-on", "high", "exit 1 at/above this severity")
 	var only stringList
 	fs.Var(&only, "rule", "run only this rule (repeatable)")
@@ -105,16 +105,22 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	audit.Sort(findings)
 
 	sum := report.Summarize(findings, 0)
+	var renderErr error
 	switch *format {
 	case "json":
-		if err := report.NewRun(findings, 0).WriteJSON(stdout); err != nil {
-			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
-			return 2
-		}
+		renderErr = report.NewRun(findings, 0).WriteJSON(stdout)
 	case "table":
-		report.WriteTable(stdout, findings, sum, nil, false)
+		report.WriteTable(stdout, findings, sum, nil, wantColor(stdout))
+	case "sarif":
+		renderErr = report.WriteSARIF(stdout, version, ruleInfos(), findings)
+	case "html":
+		renderErr = report.WriteHTML(stdout, findings, sum, nil)
 	default:
 		fmt.Fprintf(stderr, "seaworthy: unknown --format %q\n", *format)
+		return 2
+	}
+	if renderErr != nil {
+		fmt.Fprintf(stderr, "seaworthy: %v\n", renderErr)
 		return 2
 	}
 
@@ -124,6 +130,37 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// ruleInfos converts the registry (plus the loader's synthetic
+// parse-error rule) into SARIF rule metadata.
+func ruleInfos() []report.RuleInfo {
+	out := []report.RuleInfo{{
+		ID:   "parse-error",
+		Desc: "document could not be parsed",
+		Hint: "fix the YAML so the document can be audited",
+	}}
+	for _, r := range rules.All() {
+		out = append(out, report.RuleInfo{ID: r.ID, Desc: r.Desc, Hint: r.Hint})
+	}
+	return out
+}
+
+// wantColor enables ANSI colors only for real terminals that have not
+// opted out via NO_COLOR.
+func wantColor(w io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	st, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return st.Mode()&os.ModeCharDevice != 0
 }
 
 func cmdRules(w io.Writer) int {

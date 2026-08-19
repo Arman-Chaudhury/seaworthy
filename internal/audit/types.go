@@ -68,6 +68,18 @@ type Finding struct {
 // AtOrAbove reports whether the finding meets a --fail-on threshold.
 func (f Finding) AtOrAbove(t Severity) bool { return f.Severity >= t }
 
+// Ref renders the finding's object as ns/Kind/name.
+func (f Finding) Ref() string {
+	ref := f.Name
+	if f.Kind != "" {
+		ref = f.Kind + "/" + f.Name
+	}
+	if f.Namespace != "" {
+		ref = f.Namespace + "/" + ref
+	}
+	return ref
+}
+
 // MarshalJSON renders severities as their names so run documents and
 // baselines stay readable and stable across releases.
 func (s Severity) MarshalJSON() ([]byte, error) { return json.Marshal(s.String()) }

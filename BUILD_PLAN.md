@@ -20,7 +20,7 @@ green CI. See SPEC.md for the full design.
 - [x] **M4 — Cross-resource rules.** `dangling-service`,
       `hpa-target-missing`, `hpa-replicas-conflict`, `no-pdb`,
       `single-replica` over the whole-Snapshot graph.
-- [ ] **M5 — Reports.** TTY-aware severity-colored table, SARIF 2.1.0 with
+- [x] **M5 — Reports.** TTY-aware severity-colored table, SARIF 2.1.0 with
       physical locations (PR annotations via code scanning), self-contained
       single-file HTML dashboard; golden-file tests for all formats.
 - [ ] **M6 — Ops surface.** `seaworthy.yaml` config (rule toggles, severity

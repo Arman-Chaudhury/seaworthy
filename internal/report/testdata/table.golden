@@ -1,0 +1,9 @@
+shop/Deployment/api
+  low      missing-labels         missing label(s) app.kubernetes.io/name
+
+shop/Deployment/web  (deploy/web.yaml:4)
+  high     latest-image           container "web": image "nginx:latest" is not pinned
+  medium   no-pdb                 3 replicas but no PodDisruptionBudget matches its pods
+
+delta vs previous run: 1 new, 0 fixed
+3 findings: 1 high, 1 medium, 1 low (1 suppressed by baseline)
