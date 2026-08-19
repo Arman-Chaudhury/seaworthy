@@ -2,9 +2,10 @@
 # Rule tests and the kind e2e (BUILD_PLAN M7) assert against this file.
 # Expected findings are listed per document.
 ---
-# web: latest-image, missing-probes, no-resource-requests, secrets-in-env,
-#      no-pdb (3 replicas, no PDB in the set), hpa-replicas-conflict
-#      (pins replicas while shop-web-hpa targets it), missing-labels
+# web: latest-image, missing-probes, no-resource-requests, runs-as-root,
+#      privilege-escalation, secrets-in-env, missing-labels, no-pdb
+#      (3 replicas, no PDB in the set), hpa-replicas-conflict (pins
+#      replicas while shop-web-hpa targets it)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,8 +32,10 @@ spec:
             - name: DB_HOST
               value: postgres.shop.svc
 ---
-# worker: single-replica, runs-as-root (explicit uid 0), host-access
-#         (hostPath volume), latest-image (untagged)
+# worker: latest-image (untagged), missing-probes (no readiness),
+#         runs-as-root (explicit uid 0), privilege-escalation (not
+#         disabled), host-access (hostPath volume), single-replica,
+#         missing-labels
 apiVersion: apps/v1
 kind: Deployment
 metadata:

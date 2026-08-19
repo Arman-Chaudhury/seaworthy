@@ -1,0 +1,45 @@
+# The audit CronJob passes seaworthy's own rules — the chart is
+# dogfooded in CI with `helm template | seaworthy audit -`.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-seaworthy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: seaworthy
+    app.kubernetes.io/part-of: seaworthy
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: seaworthy
+            app.kubernetes.io/part-of: seaworthy
+        spec:
+          serviceAccountName: {{ .Release.Name }}-seaworthy
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+          containers:
+            - name: audit
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              args:
+                - audit
+                - --live
+                {{- if .Values.auditNamespace }}
+                - --namespace
+                - {{ .Values.auditNamespace | quote }}
+                {{- end }}
+                - --fail-on
+                - {{ .Values.failOn | quote }}
+                - --format
+                - json
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: seaworthy
+description: Scheduled read-only workload-hygiene audits for the cluster it runs in
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/Arman-Chaudhury/seaworthy

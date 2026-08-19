@@ -53,7 +53,7 @@ and edge tests.
 Pod-level (M2–M3) — applied to every workload's pod template:
 1. `latest-image` (high) — image has no tag or tag `latest`.
 2. `missing-probes` (high) — container lacks liveness or readiness probe
-   (Jobs/CronJobs exempt from readiness).
+   (Jobs/CronJobs exempt: they run to completion and take no traffic).
 3. `no-resource-requests` (high) — missing CPU/memory requests or limits.
 4. `runs-as-root` (high) — neither pod nor container sets
    `runAsNonRoot: true` (or sets `runAsUser: 0` explicitly).
