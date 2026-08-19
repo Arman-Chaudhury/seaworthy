@@ -8,8 +8,11 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Arman-Chaudhury/seaworthy/internal/audit"
+	"github.com/Arman-Chaudhury/seaworthy/internal/baseline"
+	"github.com/Arman-Chaudhury/seaworthy/internal/config"
 	"github.com/Arman-Chaudhury/seaworthy/internal/manifest"
 	"github.com/Arman-Chaudhury/seaworthy/internal/report"
 	"github.com/Arman-Chaudhury/seaworthy/internal/rules"
@@ -25,10 +28,15 @@ Usage:
   seaworthy version                     print version
 
 Audit flags:
-  --format table|json     output format (default table)
+  --format table|json|sarif|html
+                          output format (default table)
   --fail-on high|medium|low
                           exit 1 at/above this severity (default high)
   --rule <id>             run only this rule (repeatable)
+  --config <file>         config file (default: seaworthy.yaml if present)
+  --baseline <file>       suppression file (default seaworthy-baseline.yaml)
+  --update-baseline       accept current findings into the baseline
+  --previous <run.json>   previous run for new/fixed delta reporting
 
 Exit codes: 0 clean (below --fail-on), 1 findings at/above threshold,
 2 usage or load error.
@@ -73,6 +81,10 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	failOn := fs.String("fail-on", "high", "exit 1 at/above this severity")
 	var only stringList
 	fs.Var(&only, "rule", "run only this rule (repeatable)")
+	configPath := fs.String("config", "", "config file")
+	baselinePath := fs.String("baseline", "seaworthy-baseline.yaml", "baseline suppression file")
+	updateBaseline := fs.Bool("update-baseline", false, "accept current findings into the baseline")
+	previousPath := fs.String("previous", "", "previous run JSON for delta reporting")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -96,7 +108,35 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "seaworthy: no Kubernetes objects found in input")
 		return 2
 	}
-	ruleFindings, err := rules.Run(&rules.Context{Snap: snap}, rules.Options{Only: only})
+	var cfg *config.Config
+	if *configPath != "" {
+		cfg, err = config.Load(*configPath)
+	} else {
+		cfg, err = config.Discover()
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+		return 2
+	}
+	ctx := &rules.Context{Snap: snap}
+	opts := rules.Options{Only: only}
+	if cfg != nil {
+		known := map[string]bool{}
+		for _, r := range rules.All() {
+			known[r.ID] = true
+		}
+		if err := cfg.Validate(known); err != nil {
+			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+			return 2
+		}
+		opts.Disabled = cfg.Disabled()
+		opts.SeverityOverride = cfg.SeverityOverrides()
+		opts.IgnoreNamespaces = cfg.IgnoredNamespaces()
+		if len(cfg.RequiredLabels) > 0 {
+			ctx.RequiredLabels = cfg.RequiredLabels
+		}
+	}
+	ruleFindings, err := rules.Run(ctx, opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "seaworthy: %v\n", err)
 		return 2
@@ -104,17 +144,47 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	findings = append(findings, ruleFindings...)
 	audit.Sort(findings)
 
-	sum := report.Summarize(findings, 0)
+	bl, err := baseline.Load(*baselinePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+		return 2
+	}
+	suppressed := 0
+	if *updateBaseline {
+		if err := baseline.Build(findings, bl).Write(*baselinePath); err != nil {
+			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+			return 2
+		}
+		fmt.Fprintf(stderr, "seaworthy: %d finding(s) accepted into %s\n", len(findings), *baselinePath)
+		suppressed = len(findings)
+		findings = nil
+	} else {
+		findings, suppressed = bl.Apply(findings, time.Now())
+	}
+
+	var delta *report.Delta
+	if *previousPath != "" {
+		prev, err := report.LoadRun(*previousPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+			return 2
+		}
+		delta = report.ComputeDelta(prev, findings)
+	}
+
+	sum := report.Summarize(findings, suppressed)
 	var renderErr error
 	switch *format {
 	case "json":
-		renderErr = report.NewRun(findings, 0).WriteJSON(stdout)
+		run := report.NewRun(findings, suppressed)
+		run.Delta = delta
+		renderErr = run.WriteJSON(stdout)
 	case "table":
-		report.WriteTable(stdout, findings, sum, nil, wantColor(stdout))
+		report.WriteTable(stdout, findings, sum, delta, wantColor(stdout))
 	case "sarif":
 		renderErr = report.WriteSARIF(stdout, version, ruleInfos(), findings)
 	case "html":
-		renderErr = report.WriteHTML(stdout, findings, sum, nil)
+		renderErr = report.WriteHTML(stdout, findings, sum, delta)
 	default:
 		fmt.Fprintf(stderr, "seaworthy: unknown --format %q\n", *format)
 		return 2

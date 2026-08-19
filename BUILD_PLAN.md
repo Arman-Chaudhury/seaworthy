@@ -23,7 +23,7 @@ green CI. See SPEC.md for the full design.
 - [x] **M5 — Reports.** TTY-aware severity-colored table, SARIF 2.1.0 with
       physical locations (PR annotations via code scanning), self-contained
       single-file HTML dashboard; golden-file tests for all formats.
-- [ ] **M6 — Ops surface.** `seaworthy.yaml` config (rule toggles, severity
+- [x] **M6 — Ops surface.** `seaworthy.yaml` config (rule toggles, severity
       overrides, required labels), baseline suppressions with expiries +
       `--update-baseline`, `--previous` delta section.
 - [ ] **M7 — Live collector + kind e2e.** client-go read-only Snapshot

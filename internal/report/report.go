@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"sort"
 
 	"github.com/Arman-Chaudhury/seaworthy/internal/audit"
 )
@@ -64,6 +66,50 @@ func Summarize(findings []audit.Finding, suppressed int) Summary {
 		}
 	}
 	return s
+}
+
+// LoadRun reads a previous run document (the --previous input).
+func LoadRun(path string) (*Run, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var r Run
+	if err := json.Unmarshal(data, &r); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if r.SchemaVersion != 1 {
+		return nil, fmt.Errorf("%s: unsupported schema_version %d", path, r.SchemaVersion)
+	}
+	return &r, nil
+}
+
+// ComputeDelta compares current findings against a previous run by
+// fingerprint. Entries read "fingerprint rule object" so both humans
+// and scripts can consume them.
+func ComputeDelta(prev *Run, current []audit.Finding) *Delta {
+	label := func(fp, rule, ref string) string { return fp + " " + rule + " " + ref }
+	prevSet := map[string]runFinding{}
+	for _, f := range prev.Findings {
+		prevSet[f.Fingerprint] = f
+	}
+	curSet := map[string]bool{}
+	d := &Delta{New: []string{}, Fixed: []string{}}
+	for _, f := range current {
+		fp := f.Fingerprint()
+		curSet[fp] = true
+		if _, ok := prevSet[fp]; !ok {
+			d.New = append(d.New, label(fp, f.Rule, f.Ref()))
+		}
+	}
+	for fp, f := range prevSet {
+		if !curSet[fp] {
+			d.Fixed = append(d.Fixed, label(fp, f.Rule, f.Ref()))
+		}
+	}
+	sort.Strings(d.New)
+	sort.Strings(d.Fixed)
+	return d
 }
 
 // WriteJSON writes the run document, indented for humans and diffs.
