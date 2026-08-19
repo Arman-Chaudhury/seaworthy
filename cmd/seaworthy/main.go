@@ -13,6 +13,7 @@ import (
 	"github.com/Arman-Chaudhury/seaworthy/internal/audit"
 	"github.com/Arman-Chaudhury/seaworthy/internal/baseline"
 	"github.com/Arman-Chaudhury/seaworthy/internal/config"
+	"github.com/Arman-Chaudhury/seaworthy/internal/live"
 	"github.com/Arman-Chaudhury/seaworthy/internal/manifest"
 	"github.com/Arman-Chaudhury/seaworthy/internal/report"
 	"github.com/Arman-Chaudhury/seaworthy/internal/rules"
@@ -24,6 +25,7 @@ const usage = `seaworthy — Kubernetes workload-hygiene auditor
 
 Usage:
   seaworthy audit [flags] <path...|->   audit rendered manifests
+  seaworthy audit --live [flags]        audit a running cluster (read-only)
   seaworthy rules                       list rules, severities, and hints
   seaworthy version                     print version
 
@@ -37,6 +39,10 @@ Audit flags:
   --baseline <file>       suppression file (default seaworthy-baseline.yaml)
   --update-baseline       accept current findings into the baseline
   --previous <run.json>   previous run for new/fixed delta reporting
+  --live                  audit a running cluster instead of files
+  --namespace <ns>        live mode: audit one namespace (default: all)
+  --context <name>        live mode: kubeconfig context
+  --kubeconfig <file>     live mode: explicit kubeconfig path
 
 Exit codes: 0 clean (below --fail-on), 1 findings at/above threshold,
 2 usage or load error.
@@ -85,6 +91,10 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	baselinePath := fs.String("baseline", "seaworthy-baseline.yaml", "baseline suppression file")
 	updateBaseline := fs.Bool("update-baseline", false, "accept current findings into the baseline")
 	previousPath := fs.String("previous", "", "previous run JSON for delta reporting")
+	liveMode := fs.Bool("live", false, "audit a running cluster instead of files")
+	namespace := fs.String("namespace", "", "live mode: namespace to audit (default: all)")
+	kubeContext := fs.String("context", "", "live mode: kubeconfig context")
+	kubeconfig := fs.String("kubeconfig", "", "live mode: explicit kubeconfig path")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -94,19 +104,43 @@ func cmdAudit(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 	paths := fs.Args()
-	if len(paths) == 0 {
-		fmt.Fprintln(stderr, "seaworthy audit: no manifest paths given (use \"-\" for stdin)")
-		return 2
-	}
-
-	snap, findings, err := manifest.Load(paths, stdin)
-	if err != nil {
-		fmt.Fprintf(stderr, "seaworthy: %v\n", err)
-		return 2
-	}
-	if len(snap.Objects) == 0 && len(findings) == 0 {
-		fmt.Fprintln(stderr, "seaworthy: no Kubernetes objects found in input")
-		return 2
+	var snap *manifest.Snapshot
+	var findings []audit.Finding
+	if *liveMode {
+		if len(paths) > 0 {
+			fmt.Fprintln(stderr, "seaworthy audit: --live takes no manifest paths")
+			return 2
+		}
+		cs, err := live.BuildClient(*kubeconfig, *kubeContext)
+		if err != nil {
+			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+			return 2
+		}
+		snap, err = live.Collect(cs, *namespace)
+		if err != nil {
+			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+			return 2
+		}
+		if len(snap.Objects) == 0 {
+			// A typo'd namespace must not slip through a CI gate green.
+			fmt.Fprintln(stderr, "seaworthy: no audited objects found in cluster scope")
+			return 2
+		}
+	} else {
+		if len(paths) == 0 {
+			fmt.Fprintln(stderr, "seaworthy audit: no manifest paths given (use \"-\" for stdin)")
+			return 2
+		}
+		var err error
+		snap, findings, err = manifest.Load(paths, stdin)
+		if err != nil {
+			fmt.Fprintf(stderr, "seaworthy: %v\n", err)
+			return 2
+		}
+		if len(snap.Objects) == 0 && len(findings) == 0 {
+			fmt.Fprintln(stderr, "seaworthy: no Kubernetes objects found in input")
+			return 2
+		}
 	}
 	var cfg *config.Config
 	if *configPath != "" {

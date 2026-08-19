@@ -26,7 +26,7 @@ green CI. See SPEC.md for the full design.
 - [x] **M6 — Ops surface.** `seaworthy.yaml` config (rule toggles, severity
       overrides, required labels), baseline suppressions with expiries +
       `--update-baseline`, `--previous` delta section.
-- [ ] **M7 — Live collector + kind e2e.** client-go read-only Snapshot
+- [x] **M7 — Live collector + kind e2e.** client-go read-only Snapshot
       builder (kubeconfig/context/in-cluster), fake-clientset unit tests,
       GitHub Actions kind e2e: apply seeded fixture, `audit --live`, assert
       findings. (No local Docker daemon — kind runs in CI only.)

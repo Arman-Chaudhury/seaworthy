@@ -23,3 +23,38 @@ jobs:
         run: go test ./... -race -count=1
       - name: build
         run: go build ./cmd/seaworthy
+
+  # Kind e2e: apply the seeded fixture to a real cluster and check the
+  # live audit reproduces the contract the unit tests pin (18 findings).
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: helm/kind-action@v1
+      - name: build
+        run: go build ./cmd/seaworthy
+      - name: apply fixture
+        run: |
+          kubectl create namespace shop
+          kubectl apply -n shop -f testdata/fixtures/demo-app.yaml
+      - name: live audit
+        run: |
+          set +e
+          ./seaworthy audit --live --namespace shop --format json > live.json
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "expected exit 1, got $code"; cat live.json; exit 1
+          fi
+          jq -e '.summary.total == 18 and .summary.high == 13' live.json >/dev/null || { cat live.json; exit 1; }
+          for rule in latest-image missing-probes no-resource-requests runs-as-root \
+                      privilege-escalation host-access secrets-in-env missing-labels \
+                      dangling-service hpa-target-missing hpa-replicas-conflict \
+                      no-pdb single-replica; do
+            jq -e --arg r "$rule" '[.findings[].rule] | index($r) != null' live.json >/dev/null \
+              || { echo "missing rule: $rule"; cat live.json; exit 1; }
+          done
+          echo "live audit matches the offline contract"
