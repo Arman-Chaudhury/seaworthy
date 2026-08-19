@@ -17,7 +17,7 @@ green CI. See SPEC.md for the full design.
       `privilege-escalation`, `host-access`, `secrets-in-env`,
       `missing-labels`, `deprecated-api` — fixture-backed
       positive/negative/edge tests per rule (SPEC §4).
-- [ ] **M4 — Cross-resource rules.** `dangling-service`,
+- [x] **M4 — Cross-resource rules.** `dangling-service`,
       `hpa-target-missing`, `hpa-replicas-conflict`, `no-pdb`,
       `single-replica` over the whole-Snapshot graph.
 - [ ] **M5 — Reports.** TTY-aware severity-colored table, SARIF 2.1.0 with

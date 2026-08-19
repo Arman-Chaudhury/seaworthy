@@ -108,5 +108,10 @@ func All() []Rule {
 		secretsInEnv,
 		missingLabels,
 		deprecatedAPI,
+		danglingService,
+		hpaTargetMissing,
+		hpaReplicasConflict,
+		noPDB,
+		singleReplica,
 	}
 }
