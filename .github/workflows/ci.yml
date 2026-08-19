@@ -58,3 +58,21 @@ jobs:
               || { echo "missing rule: $rule"; cat live.json; exit 1; }
           done
           echo "live audit matches the offline contract"
+      - name: dogfood the helm chart
+        run: |
+          helm lint deploy/chart/seaworthy
+          helm template audit deploy/chart/seaworthy | ./seaworthy audit -
+          echo "chart passes seaworthy's own rules"
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build image
+        run: docker build -t seaworthy:ci .
+      - name: smoke test image
+        run: |
+          docker run --rm seaworthy:ci version
+          docker run --rm -v "$PWD/testdata:/testdata:ro" seaworthy:ci \
+            audit --format json /testdata/fixtures/demo-app.yaml > docker.json || true
+          jq -e '.summary.total == 18' docker.json

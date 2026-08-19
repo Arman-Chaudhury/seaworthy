@@ -17,16 +17,18 @@ var missingProbes = Rule{
 	Desc:     "container lacks liveness or readiness probes",
 	Hint:     "add probes so Kubernetes can restart wedged containers and route traffic only when ready",
 	Check: forWorkloads(func(_ *Context, w *manifest.Workload) []audit.Finding {
-		// Batch workloads never receive traffic, so readiness is not
-		// expected there (SPEC §4).
-		needsReadiness := w.Kind != "Job" && w.Kind != "CronJob"
+		// Batch workloads run to completion and never receive traffic —
+		// probes there are noise, so Job/CronJob are exempt (SPEC §4).
+		if w.Kind == "Job" || w.Kind == "CronJob" {
+			return nil
+		}
 		var out []audit.Finding
 		for _, c := range w.Template.Spec.Containers {
 			var missing []string
 			if c.LivenessProbe == nil {
 				missing = append(missing, "liveness")
 			}
-			if needsReadiness && c.ReadinessProbe == nil {
+			if c.ReadinessProbe == nil {
 				missing = append(missing, "readiness")
 			}
 			if len(missing) > 0 {

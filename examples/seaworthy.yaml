@@ -1,0 +1,20 @@
+# Example seaworthy.yaml — drop in the repo root (auto-discovered) or
+# pass with --config. Everything is optional.
+
+rules:
+  # Turn a rule off entirely.
+  missing-labels:
+    enabled: false
+  # Or reshape its severity for your gate.
+  single-replica:
+    severity: high
+
+# Labels missing-labels enforces (default: app.kubernetes.io/name,
+# app.kubernetes.io/part-of).
+required-labels:
+  - app.kubernetes.io/name
+  - team
+
+# Namespaces to skip entirely (system namespaces, vendor charts…).
+ignore-namespaces:
+  - kube-system

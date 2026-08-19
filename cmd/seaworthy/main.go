@@ -19,7 +19,7 @@ import (
 	"github.com/Arman-Chaudhury/seaworthy/internal/rules"
 )
 
-var version = "0.0.1-dev"
+var version = "0.1.0"
 
 const usage = `seaworthy — Kubernetes workload-hygiene auditor
 

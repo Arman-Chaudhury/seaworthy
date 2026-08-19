@@ -24,7 +24,7 @@ func TestMissingProbes(t *testing.T) {
 	})
 }
 
-func TestMissingProbesJobExemptFromReadiness(t *testing.T) {
+func TestMissingProbesBatchExempt(t *testing.T) {
 	ctx := inlineContext(t, `
 apiVersion: batch/v1
 kind: Job
@@ -35,8 +35,19 @@ spec:
       containers:
         - name: migrate
           image: shop/migrate:1.0
-          livenessProbe:
-            exec: {command: ["/bin/true"]}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: nightly, namespace: shop}
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: shop/backup:2.0
 `)
 	expectFindings(t, runRules(t, ctx, "missing-probes"), nil)
 }

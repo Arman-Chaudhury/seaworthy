@@ -1,0 +1,22 @@
+image:
+  repository: ghcr.io/arman-chaudhury/seaworthy
+  # Pin a version; seaworthy itself flags :latest.
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# Cron schedule for the audit run.
+schedule: "0 6 * * *"
+
+# Namespace to audit; "" audits all namespaces the ClusterRole can see.
+auditNamespace: ""
+
+# Severity that fails the run (job shows as Failed in the cluster).
+failOn: high
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

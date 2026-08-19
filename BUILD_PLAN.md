@@ -30,7 +30,7 @@ green CI. See SPEC.md for the full design.
       builder (kubeconfig/context/in-cluster), fake-clientset unit tests,
       GitHub Actions kind e2e: apply seeded fixture, `audit --live`, assert
       findings. (No local Docker daemon — kind runs in CI only.)
-- [ ] **M8 — Packaging & docs.** Multi-stage Dockerfile (distroless), Helm
+- [x] **M8 — Packaging & docs.** Multi-stage Dockerfile (distroless), Helm
       chart with least-privilege read-only RBAC CronJob, GoReleaser config,
       README walkthrough (CI gate, baselines, code-scanning setup), tag
       v0.1.0 on merge.
