@@ -1,17 +1,18 @@
 # seaworthy
 
-Workload-hygiene auditor for Kubernetes: point it at rendered manifests (or a
-live cluster) and it flags the deploy-breakers reviewers miss — missing
-probes, unbounded resources, `:latest` images, root containers, multi-replica
-Deployments with no PodDisruptionBudget, Services whose selectors match
-nothing — then gates your CI/CD pipeline on the result.
+Kubernetes is the system a lot of companies use to run their software across
+many servers. You describe what you want in configuration files and it makes
+it happen. The problem is those files are easy to get subtly wrong, and the
+mistakes do not show up until something is down at 2 a.m.
 
-Single-doc linters (kube-score, kube-linter, Polaris) check each resource in
-isolation. Most real outages live *between* resources: the Service pointing at
-a label that was renamed, the HPA scaling a Deployment that pins `replicas`,
-the PDB nobody wrote. seaworthy loads the whole manifest set into one model so
-its rules can see across documents — and the same rules run identically
-against files in CI and against a live cluster via the Kubernetes API.
+seaworthy reads all of those files at once (or looks at a running cluster) and
+flags the mistakes that cause outages: no health checks, no memory limits,
+containers running as root, a service pointing at a name that was renamed, an
+autoscaler fighting a fixed replica count. Existing checkers look at one file
+at a time, and most real outages come from two files disagreeing with each
+other, so seaworthy loads the whole set into one model and checks across them.
+It can fail a deployment pipeline automatically when it finds something
+serious.
 
 ```
  manifests/*.yaml ─┐
